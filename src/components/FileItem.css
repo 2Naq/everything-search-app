@@ -1,0 +1,124 @@
+.file-item {
+  transition: background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.file-item:hover {
+  background: var(--bg-hover);
+}
+
+.file-item td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-item:last-child td {
+  border-bottom: none;
+}
+
+.file-name {
+  width: 30%;
+}
+
+.file-name-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.file-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* File type colors */
+.file-icon-folder {
+  color: #f59e0b;
+}
+.file-icon-pdf {
+  color: #ef4444;
+}
+.file-icon-document {
+  color: #3b82f6;
+}
+.file-icon-spreadsheet {
+  color: #10b981;
+}
+.file-icon-presentation {
+  color: #f97316;
+}
+.file-icon-image {
+  color: #8b5cf6;
+}
+.file-icon-video {
+  color: #ec4899;
+}
+.file-icon-audio {
+  color: #14b8a6;
+}
+.file-icon-archive {
+  color: #eab308;
+}
+.file-icon-code {
+  color: #22c55e;
+}
+.file-icon-executable {
+  color: #6366f1;
+}
+.file-icon-settings {
+  color: #10b981;
+}
+.file-icon-system {
+  color: #64748b;
+}
+.file-icon-text {
+  color: #94a3b8;
+}
+.file-icon-log {
+  color: #78716c;
+}
+.file-icon-file {
+  color: #64748b;
+}
+
+.file-name-text {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-path {
+  width: 35%;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.file-size {
+  width: 15%;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.file-date {
+  width: 20%;
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}

@@ -27,8 +27,7 @@ import {
   formatFileSize,
   formatDate,
 } from "@/utils/file.utils";
-
-const API_BASE_URL = import.meta.env.VITE_APP_API_URL;
+import { everythingService } from "@/services/everything.service";
 
 interface FilePreviewProps {
   file: FileItem | null;
@@ -59,7 +58,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   if (!file) return null;
 
   const filePath = file.path ? `${file.path}\\${file.name}` : file.name;
-  const fileUrl = `${API_BASE_URL}/${encodeURIComponent(filePath)}`;
+  const fileUrl = everythingService.getFileUrl(filePath);
   const extension = getFileExtension(file.name);
   const fileType = getFileType(extension);
   const previewType = getPreviewType(extension);

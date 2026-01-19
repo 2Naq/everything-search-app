@@ -1,11 +1,18 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { LogOut, User } from "lucide-react";
 import Header from "./components/Header";
 import SearchBar from "./components/SearchBar";
 import SearchResults from "./components/SearchResults";
 import Pagination from "./components/Pagination";
 import Breadcrumb from "./components/Breadcrumb";
 import FilePreview from "./components/FilePreview";
-import { everythingService } from "./services/everything.service";
+import LoginDialog from "./components/LoginDialog";
+import { Button } from "./components/ui/button";
+import {
+  everythingService,
+  AuthenticationError,
+} from "./services/everything.service";
+import { authService } from "./services/auth.service";
 import type {
   FileItem,
   SearchOptions,
@@ -37,6 +44,21 @@ function App() {
   // File preview state
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Auth state
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    authService.isAuthenticated(),
+  );
+
+  // Check auth status on mount
+  useEffect(() => {
+    setIsAuthenticated(authService.isAuthenticated());
+  }, []);
+
+  const handleAuthError = useCallback(() => {
+    setIsLoginOpen(true);
+  }, []);
 
   const performSearch = useCallback(
     async (
@@ -72,14 +94,19 @@ function App() {
         setTotalResults(data.totalResults || 0);
         setCurrentPage(page);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        if (err instanceof AuthenticationError) {
+          handleAuthError();
+          setError("Authentication required");
+        } else {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
         setResults([]);
         setTotalResults(0);
       } finally {
         setIsLoading(false);
       }
     },
-    [resultsPerPage, sortConfig],
+    [resultsPerPage, sortConfig, handleAuthError],
   );
 
   const performBrowse = useCallback(
@@ -109,14 +136,19 @@ function App() {
         setTotalResults(data.totalResults || 0);
         setCurrentPage(page);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        if (err instanceof AuthenticationError) {
+          handleAuthError();
+          setError("Authentication required");
+        } else {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
         setResults([]);
         setTotalResults(0);
       } finally {
         setIsLoading(false);
       }
     },
-    [resultsPerPage, sortConfig],
+    [resultsPerPage, sortConfig, handleAuthError],
   );
 
   const handleSearch = useCallback(
@@ -187,11 +219,55 @@ function App() {
     }
   };
 
+  const handleLogin = async (
+    username: string,
+    password: string,
+  ): Promise<boolean> => {
+    const success = await everythingService.testConnection(username, password);
+    if (success) {
+      authService.setCredentials({ username, password });
+      setIsAuthenticated(true);
+      setError(null);
+      // Retry last action
+      if (currentQuery) {
+        performSearch(currentQuery, currentPage, resultsPerPage, sortConfig);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setResults([]);
+    setTotalResults(0);
+    setCurrentQuery("");
+    setCurrentPath(null);
+  };
+
   const totalPages = Math.ceil(totalResults / resultsPerPage);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-6xl px-4 py-4">
+        {/* Auth status bar */}
+        {isAuthenticated && (
+          <div className="mb-2 flex items-center justify-end gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4" />
+            <span>{authService.getCredentials()?.username}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-7 gap-1 text-xs"
+            >
+              <LogOut className="h-3 w-3" />
+              Logout
+            </Button>
+          </div>
+        )}
+
         <Header />
 
         <SearchBar onSearch={handleSearch} isLoading={isLoading} />
@@ -230,6 +306,14 @@ function App() {
         file={previewFile}
         isOpen={isPreviewOpen}
         onClose={handleClosePreview}
+      />
+
+      {/* Login Dialog */}
+      <LoginDialog
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onLogin={handleLogin}
+        error={null}
       />
     </div>
   );

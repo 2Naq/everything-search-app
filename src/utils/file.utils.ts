@@ -1,62 +1,19 @@
-// Everything HTTP Server API Service
-// Using Vite proxy to bypass CORS
-const API_BASE_URL = "/api";
-
-/**
- * Search files using Everything HTTP Server API
- * @param {string} query - Search query
- * @param {Object} options - Search options
- * @returns {Promise<Object>} Search results
- */
-export async function searchFiles(query, options = {}) {
-  const {
-    offset = 0,
-    count = 50,
-    sort = "name",
-    ascending = 1,
-    pathColumn = 1,
-    sizeColumn = 1,
-    dateModifiedColumn = 1,
-  } = options;
-
-  const params = new URLSearchParams({
-    search: query,
-    j: "1", // JSON response
-    o: offset.toString(),
-    c: count.toString(),
-    path_column: pathColumn.toString(),
-    size_column: sizeColumn.toString(),
-    date_modified_column: dateModifiedColumn.toString(),
-    sort: sort,
-    ascending: ascending.toString(),
-  });
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/?${params.toString()}`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching search results:", error);
-    throw error;
-  }
-}
+// File Utility Functions
+import type { FileType } from "@/types/everything.types";
 
 /**
  * Format file size to human readable format
- * @param {number} bytes - File size in bytes
- * @returns {string} Formatted size
  */
-export function formatFileSize(bytes) {
+export function formatFileSize(
+  bytes: number | string | undefined | null,
+): string {
   if (bytes === undefined || bytes === null || bytes === "") return "--";
 
   const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = parseInt(bytes, 10);
+  let size = typeof bytes === "string" ? parseInt(bytes, 10) : bytes;
   let unitIndex = 0;
+
+  if (isNaN(size)) return "--";
 
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
@@ -68,28 +25,22 @@ export function formatFileSize(bytes) {
 
 /**
  * Format date to readable format
- * @param {number|string} dateValue - Date value from Everything API
- * @returns {string} Formatted date
  */
-export function formatDate(dateValue) {
+export function formatDate(
+  dateValue: number | string | undefined | null,
+): string {
   if (!dateValue) return "--";
 
   try {
-    let date;
+    let date: Date;
 
-    // Everything HTTP returns date as Windows FILETIME (100-nanosecond intervals since Jan 1, 1601)
-    // or as a large integer. We need to convert it properly.
     const numValue =
       typeof dateValue === "string" ? parseInt(dateValue, 10) : dateValue;
 
     if (isNaN(numValue)) return "--";
 
-    // Check if it's a Windows FILETIME (very large number > year 3000 as unix timestamp)
     if (numValue > 32503680000) {
-      // Convert Windows FILETIME to JavaScript Date
-      // FILETIME is 100-nanosecond intervals since January 1, 1601
-      // JavaScript Date uses milliseconds since January 1, 1970
-      // Difference between 1601 and 1970 is 11644473600 seconds
+      // Windows FILETIME format
       const FILETIME_TO_UNIX_EPOCH = 11644473600000n;
       const ticksPerMs = 10000n;
       const jsTimestamp = Number(
@@ -97,7 +48,6 @@ export function formatDate(dateValue) {
       );
       date = new Date(jsTimestamp);
     } else {
-      // Assume Unix timestamp (seconds since 1970)
       date = new Date(numValue * 1000);
     }
 
@@ -110,39 +60,36 @@ export function formatDate(dateValue) {
       hour: "2-digit",
       minute: "2-digit",
     });
-  } catch (e) {
+  } catch {
     return "--";
   }
 }
 
 /**
  * Get file extension from filename
- * @param {string} filename - File name
- * @returns {string} File extension
  */
-export function getFileExtension(filename) {
+export function getFileExtension(filename: string): string {
   const parts = filename.split(".");
-  return parts.length > 1 ? parts.pop().toLowerCase() : "";
+  return parts.length > 1 ? (parts.pop()?.toLowerCase() ?? "") : "";
 }
 
 /**
  * Get file type category from extension
- * @param {string} extension - File extension
- * @returns {string} File type category
  */
-export function getFileType(extension) {
-  const types = {
+export function getFileType(extension: string): FileType {
+  const types: Record<string, FileType> = {
     // Documents
     pdf: "pdf",
     doc: "document",
     docx: "document",
     txt: "text",
     rtf: "document",
+    // Spreadsheets
     xls: "spreadsheet",
     xlsx: "spreadsheet",
+    // Presentations
     ppt: "presentation",
     pptx: "presentation",
-
     // Images
     jpg: "image",
     jpeg: "image",
@@ -152,7 +99,6 @@ export function getFileType(extension) {
     svg: "image",
     webp: "image",
     ico: "image",
-
     // Videos
     mp4: "video",
     avi: "video",
@@ -161,7 +107,6 @@ export function getFileType(extension) {
     wmv: "video",
     flv: "video",
     webm: "video",
-
     // Audio
     mp3: "audio",
     wav: "audio",
@@ -169,14 +114,12 @@ export function getFileType(extension) {
     aac: "audio",
     ogg: "audio",
     wma: "audio",
-
     // Archives
     zip: "archive",
     rar: "archive",
     "7z": "archive",
     tar: "archive",
     gz: "archive",
-
     // Code
     js: "code",
     jsx: "code",
@@ -195,19 +138,19 @@ export function getFileType(extension) {
     go: "code",
     rs: "code",
     sql: "code",
-
     // Executables
     exe: "executable",
     msi: "executable",
     bat: "executable",
     cmd: "executable",
     ps1: "executable",
-
     // System
     dll: "system",
     sys: "system",
+    // Settings
     ini: "settings",
     cfg: "settings",
+    // Logs
     log: "log",
   };
 

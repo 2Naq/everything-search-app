@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, useRef } from "react";
+import type { FormEvent, ChangeEvent } from "react";
 import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
@@ -51,13 +52,13 @@ function SearchBar({ onSearch, isLoading }: SearchBarProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative mx-auto mb-6 max-w-2xl">
+    <form onSubmit={handleSubmit} className="relative max-w-2xl">
       <div className="relative flex items-center">
         <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
         <Input
           ref={inputRef}
           type="text"
-          className="h-12 w-full rounded-lg border-input bg-card pl-12 pr-24 text-base shadow-sm transition-shadow focus-visible:shadow-md"
+          className="h-12 w-full min-w-xl rounded-lg border-input bg-card pl-12 pr-24 text-base "
           placeholder="Search files, folders, and documents..."
           value={query}
           onChange={handleChange}

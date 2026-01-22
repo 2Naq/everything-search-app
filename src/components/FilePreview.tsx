@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Download,
@@ -11,6 +11,7 @@ import {
   Maximize2,
   ZoomIn,
   ZoomOut,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,11 +24,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { FileItem } from "@/types/everything.types";
 import {
   getFileExtension,
-  getFileType,
   formatFileSize,
   formatDate,
 } from "@/utils/file.utils";
 import { everythingService } from "@/services/everything.service";
+import { authService } from "@/services/auth.service";
 
 interface FilePreviewProps {
   file: FileItem | null;
@@ -53,48 +54,133 @@ function getPreviewType(extension: string): PreviewType {
 
 function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   const [zoom, setZoom] = useState(1);
-  const [imageError, setImageError] = useState(false);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file || !isOpen) {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        setObjectUrl(null);
+      }
+      return;
+    }
+
+    const loadFile = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const filePath = file.path ? `${file.path}\\${file.name}` : file.name;
+        // Use the API proxy path to leverage authenticated fetch
+        // Note: We use the proxy '/api' to bypass potential CORS issues and ensure headers are handled if we were using the proxy logic,
+        // but here we are constructing the fetch manually.
+        // If everythingService.baseUrl already points to /api (preferred), use that.
+        // Assuming the proxy setup in vite.config.js handles '/api' -> target
+
+        if (!authService.isAuthenticated()) {
+          setError("Authentication required");
+          return;
+        }
+
+        const encodedPath = encodeURIComponent(filePath);
+        // Use /api proxy to avoid CORS issues in production
+        // The Express server proxies /api/* to Everything HTTP server
+        const urlForFetch = `/api/${encodedPath}`;
+
+        const response = await fetch(urlForFetch, {
+          headers: authService.getHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load file");
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setObjectUrl(url);
+      } catch (err) {
+        console.error("Preview loading error:", err);
+        setError("Unable to load preview");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFile();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [file, isOpen]);
 
   if (!file) return null;
 
-  const filePath = file.path ? `${file.path}\\${file.name}` : file.name;
-  const fileUrl = everythingService.getFileUrl(filePath);
   const extension = getFileExtension(file.name);
-  const fileType = getFileType(extension);
   const previewType = getPreviewType(extension);
 
+  // Fallback direct URL (for download/external open) - keeps credentials logic or uses proxy relative path
+  const filePath = file.path ? `${file.path}\\${file.name}` : file.name;
+  // We use the proxy path for external open too if possible, but browser opening new tab needsAuth
+  // So we might still use the credential-embedded URL for "Open in new tab" if the user accepts the risk,
+  // OR we rely on the session cookie if Everything supported it (it doesn't).
+  // For now, let's use the credential URL for "Download/External" as a backup,
+  // or better: for download, we can trigger a blob download.
+  const externalUrl = everythingService.getFileUrl(filePath);
+
   const handleDownload = () => {
-    window.open(fileUrl, "_blank");
+    if (objectUrl) {
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      window.open(externalUrl, "_blank");
+    }
   };
 
   const handleOpenExternal = () => {
-    window.open(fileUrl, "_blank");
+    window.open(externalUrl, "_blank");
   };
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.25, 0.5));
   const handleResetZoom = () => setZoom(1);
 
-  const renderPreview = () => {
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p>Loading preview...</p>
+        </div>
+      );
+    }
+
+    if (error || !objectUrl) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+          <X className="h-8 w-8" />
+          <p>{error || "Preview unavailable"}</p>
+        </div>
+      );
+    }
+
     switch (previewType) {
       case "image":
         return (
           <div className="relative flex h-full items-center justify-center overflow-auto bg-black/5 dark:bg-white/5">
-            {imageError ? (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Image className="h-16 w-16" />
-                <p>Unable to load image</p>
-              </div>
-            ) : (
-              <img
-                src={fileUrl}
-                alt={file.name}
-                className="max-h-full object-contain transition-transform duration-200"
-                style={{ transform: `scale(${zoom})` }}
-                onError={() => setImageError(true)}
-                onLoad={() => setImageError(false)}
-              />
-            )}
+            <img
+              src={objectUrl}
+              alt={file.name}
+              className="max-h-full object-contain transition-transform duration-200"
+              style={{ transform: `scale(${zoom})` }}
+            />
+            {/* Zoom Controls */}
             <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-lg bg-background/90 p-2 shadow-lg backdrop-blur">
               <Button
                 variant="ghost"
@@ -104,7 +190,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              <span className="min-w-[4rem] text-center text-sm">
+              <span className="min-w-16 text-center text-sm">
                 {Math.round(zoom * 100)}%
               </span>
               <Button
@@ -130,12 +216,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
       case "video":
         return (
           <div className="flex h-full items-center justify-center bg-black">
-            <video
-              src={fileUrl}
-              controls
-              autoPlay={false}
-              className="max-h-full max-w-full"
-            >
+            <video src={objectUrl} controls className="max-h-full max-w-full">
               Your browser does not support video playback.
             </video>
           </div>
@@ -145,7 +226,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         return (
           <div className="flex h-full flex-col items-center justify-center gap-6">
             <Music className="h-24 w-24 text-muted-foreground" />
-            <audio src={fileUrl} controls className="w-full max-w-md">
+            <audio src={objectUrl} controls className="w-full max-w-md">
               Your browser does not support audio playback.
             </audio>
           </div>
@@ -154,7 +235,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
       case "pdf":
         return (
           <iframe
-            src={fileUrl}
+            src={objectUrl}
             className="h-full w-full border-0"
             title={file.name}
           />
@@ -164,7 +245,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         return (
           <ScrollArea className="h-full w-full">
             <iframe
-              src={fileUrl}
+              src={objectUrl}
               className="h-full min-h-[500px] w-full border-0 bg-card p-4 font-mono text-sm"
               title={file.name}
             />
@@ -206,7 +287,10 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[85vh] max-w-5xl flex-col gap-0 p-0">
+      <DialogContent
+        className="flex h-[85vh] max-w-7xl flex-col gap-0 p-0"
+        showCloseButton={false}
+      >
         <DialogHeader className="flex flex-row items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-3">
             {getFileIcon()}
@@ -241,7 +325,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
             </Button>
           </div>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden">{renderPreview()}</div>
+        <div className="flex-1 overflow-hidden">{renderContent()}</div>
       </DialogContent>
     </Dialog>
   );

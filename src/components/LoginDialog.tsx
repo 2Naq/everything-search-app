@@ -107,12 +107,12 @@ function LoginDialog({ isOpen, onClose, onLogin, error }: LoginDialogProps) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="text-white">
               {isLoading ? (
                 "Logging in..."
               ) : (
                 <>
-                  <LogIn className="mr-2 h-4 w-4" />
+                  <LogIn className="mr-2 h-4 w-4 " />
                   Login
                 </>
               )}

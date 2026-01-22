@@ -1,23 +1,25 @@
+import { createFileRoute } from "@tanstack/react-router";
+
 import { useState, useCallback, useEffect } from "react";
 import { LogOut, User } from "lucide-react";
-import Header from "./components/Header";
-import SearchBar from "./components/SearchBar";
-import SearchResults from "./components/SearchResults";
-import Pagination from "./components/Pagination";
-import Breadcrumb from "./components/Breadcrumb";
-import FilePreview from "./components/FilePreview";
-import LoginDialog from "./components/LoginDialog";
-import { Button } from "./components/ui/button";
+import Header from "@/components/Header";
+import SearchBar from "@/components/SearchBar";
+import SearchResults from "@/components/SearchResults";
+import Pagination from "@/components/Pagination";
+import Breadcrumb from "@/components/Breadcrumb";
+import FilePreview from "@/components/FilePreview";
+import LoginDialog from "@/components/LoginDialog";
+import { Button } from "@/components/ui/button";
 import {
   everythingService,
   AuthenticationError,
-} from "./services/everything.service";
-import { authService } from "./services/auth.service";
+} from "@/services/everything.service";
+import { authService } from "@/services/auth.service";
 import type {
   FileItem,
   SearchOptions,
   BrowseOptions,
-} from "./types/everything.types";
+} from "@/types/everything.types";
 
 interface SortConfig {
   column: string;
@@ -26,7 +28,11 @@ interface SortConfig {
 
 type ViewMode = "search" | "browse";
 
-function App() {
+export const Route = createFileRoute("/everything-search")({
+  component: EverythingSearchPage,
+});
+
+function EverythingSearchPage() {
   const [results, setResults] = useState<FileItem[]>([]);
   const [totalResults, setTotalResults] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +56,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     authService.isAuthenticated(),
   );
-
   // Check auth status on mount
   useEffect(() => {
     setIsAuthenticated(authService.isAuthenticated());
@@ -247,76 +252,76 @@ function App() {
   };
 
   const totalPages = Math.ceil(totalResults / resultsPerPage);
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-4">
-        {/* Auth status bar */}
-        {isAuthenticated && (
-          <div className="mb-2 flex items-center justify-end gap-2 text-sm text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span>{authService.getCredentials()?.username}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="h-7 gap-1 text-xs"
-            >
-              <LogOut className="h-3 w-3" />
-              Logout
-            </Button>
-          </div>
-        )}
-
+    <div>
+      <header className="bg-card sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between px-6  shadow transition-colors duration-300">
         <Header />
-
         <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+        {/* Auth status bar */}
+        <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground min-w-64">
+          {isAuthenticated && (
+            <>
+              <User className="h-4 w-4" />
+              <span>{authService.getCredentials()?.username || "no user"}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="h-7 gap-1 text-xs"
+              >
+                <LogOut className="h-3 w-3" />
+                Logout
+              </Button>
+            </>
+          )}
+        </div>
+      </header>
+      <main className="w-full">
+        <div className="p-6">
+          {viewMode === "browse" && currentPath && (
+            <Breadcrumb
+              currentPath={currentPath}
+              onNavigate={handleBreadcrumbNavigate}
+            />
+          )}
 
-        {viewMode === "browse" && currentPath && (
-          <Breadcrumb
-            currentPath={currentPath}
-            onNavigate={handleBreadcrumbNavigate}
+          <SearchResults
+            results={results}
+            totalResults={totalResults}
+            isLoading={isLoading}
+            error={error}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            onOpen={handleItemClick}
+            viewMode={viewMode}
           />
-        )}
 
-        <SearchResults
-          results={results}
-          totalResults={totalResults}
-          isLoading={isLoading}
-          error={error}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-          onOpen={handleItemClick}
-          viewMode={viewMode}
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              resultsPerPage={resultsPerPage}
+              onResultsPerPageChange={handleResultsPerPageChange}
+            />
+          )}
+        </div>
+
+        {/* File Preview Modal */}
+        <FilePreview
+          file={previewFile}
+          isOpen={isPreviewOpen}
+          onClose={handleClosePreview}
         />
 
-        {totalPages > 1 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            resultsPerPage={resultsPerPage}
-            onResultsPerPageChange={handleResultsPerPageChange}
-          />
-        )}
-      </div>
-
-      {/* File Preview Modal */}
-      <FilePreview
-        file={previewFile}
-        isOpen={isPreviewOpen}
-        onClose={handleClosePreview}
-      />
-
-      {/* Login Dialog */}
-      <LoginDialog
-        isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
-        onLogin={handleLogin}
-        error={null}
-      />
+        {/* Login Dialog */}
+        <LoginDialog
+          isOpen={isLoginOpen}
+          onClose={() => setIsLoginOpen(false)}
+          onLogin={handleLogin}
+          error={null}
+        />
+      </main>
     </div>
   );
 }
-
-export default App;

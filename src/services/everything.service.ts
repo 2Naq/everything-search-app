@@ -25,6 +25,11 @@ class EverythingService {
    * Make authenticated fetch request
    */
   private async fetchWithAuth(url: string): Promise<Response> {
+    // Client-side check to prevent native browser auth popup
+    if (!authService.isAuthenticated()) {
+      throw new AuthenticationError("Authentication required");
+    }
+
     const headers = authService.getHeaders();
     const response = await fetch(url, { headers });
 

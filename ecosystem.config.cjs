@@ -2,11 +2,12 @@ module.exports = {
   apps: [
     {
       name: "everything-search-app",
-      // Windows requires npm.cmd, while Linux/Mac uses npm
-      script: process.platform === "win32" ? "npm.cmd" : "npm",
-      args: "run preview",
+      script: "server.cjs",
+      interpreter: "node",
       env: {
         NODE_ENV: "production",
+        PORT: 3001,
+        VITE_EVERYTHING_URL: "http://localhost:80",
       },
     },
   ],

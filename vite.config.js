@@ -2,6 +2,7 @@ import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -19,12 +20,25 @@ export default defineConfig(({ mode }) => {
             proxyReq.setHeader("Authorization", req.headers.authorization);
           }
         });
+        // proxy.on("proxyRes", (proxyRes, req, res) => {
+        //   // Remover WWW-Authenticate header to prevent browser native auth popup
+        //   if (proxyRes.headers["www-authenticate"]) {
+        //     delete proxyRes.headers["www-authenticate"];
+        //   }
+        // });
       },
     },
   };
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      tanstackRouter({
+        target: "react",
+        autoCodeSplitting: true,
+      }),
+      react(),
+      tailwindcss(),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

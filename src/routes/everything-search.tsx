@@ -9,6 +9,7 @@ import Pagination from "@/components/Pagination";
 import Breadcrumb from "@/components/Breadcrumb";
 import FilePreview from "@/components/FilePreview";
 import LoginDialog from "@/components/LoginDialog";
+import ConnectionStatus from "@/components/ConnectionStatus";
 import { Button } from "@/components/ui/button";
 import {
   everythingService,
@@ -258,7 +259,8 @@ function EverythingSearchPage() {
         <Header />
         <SearchBar onSearch={handleSearch} isLoading={isLoading} />
         {/* Auth status bar */}
-        <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground min-w-64">
+        <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground min-w-64">
+          <ConnectionStatus />
           {isAuthenticated && (
             <>
               <User className="h-4 w-4" />

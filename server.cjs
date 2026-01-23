@@ -13,16 +13,28 @@ console.log(`Proxy target: ${EVERYTHING_URL}`);
 
 // Proxy configuration for /api requests
 const apiProxy = createProxyMiddleware({
-  target: EVERYTHING_URL,
+  target: EVERYTHING_URL, // Default target
   changeOrigin: true,
   pathRewrite: {
     "^/api": "", // Remove /api prefix
+  },
+  router: (req) => {
+    // Check for dynamic target header
+    const dynamicTarget = req.headers["x-everything-server-url"];
+    if (dynamicTarget) {
+      // console.log(`Dynamic proxy target: ${dynamicTarget}`);
+      return dynamicTarget;
+    }
+    return EVERYTHING_URL;
   },
   onProxyReq: (proxyReq, req) => {
     // Forward Authorization header if present
     if (req.headers.authorization) {
       proxyReq.setHeader("Authorization", req.headers.authorization);
     }
+
+    // Remove the custom header before sending to upstream to avoid confusion
+    proxyReq.removeHeader("x-everything-server-url");
   },
   onProxyRes: (proxyRes) => {
     // Remove WWW-Authenticate header to prevent browser native auth popup

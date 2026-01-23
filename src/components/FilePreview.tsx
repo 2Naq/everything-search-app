@@ -29,6 +29,7 @@ import {
 } from "@/utils/file.utils";
 import { everythingService } from "@/services/everything.service";
 import { authService } from "@/services/auth.service";
+import { settingsService } from "@/services/settings.service";
 
 interface FilePreviewProps {
   file: FileItem | null;
@@ -72,11 +73,6 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
       setError(null);
       try {
         const filePath = file.path ? `${file.path}\\${file.name}` : file.name;
-        // Use the API proxy path to leverage authenticated fetch
-        // Note: We use the proxy '/api' to bypass potential CORS issues and ensure headers are handled if we were using the proxy logic,
-        // but here we are constructing the fetch manually.
-        // If everythingService.baseUrl already points to /api (preferred), use that.
-        // Assuming the proxy setup in vite.config.js handles '/api' -> target
 
         if (!authService.isAuthenticated()) {
           setError("Authentication required");
@@ -88,8 +84,18 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         // The Express server proxies /api/* to Everything HTTP server
         const urlForFetch = `/api/${encodedPath}`;
 
+        // Prepare headers with auth and dynamic server URL
+        const headers = { ...authService.getHeaders() } as Record<
+          string,
+          string
+        >;
+        const targetUrl = settingsService.getServerUrl();
+        if (targetUrl) {
+          headers["X-Everything-Server-Url"] = targetUrl;
+        }
+
         const response = await fetch(urlForFetch, {
-          headers: authService.getHeaders(),
+          headers,
         });
 
         if (!response.ok) {
@@ -123,11 +129,6 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   // Fallback direct URL (for download/external open) - keeps credentials logic or uses proxy relative path
   const filePath = file.path ? `${file.path}\\${file.name}` : file.name;
-  // We use the proxy path for external open too if possible, but browser opening new tab needsAuth
-  // So we might still use the credential-embedded URL for "Open in new tab" if the user accepts the risk,
-  // OR we rely on the session cookie if Everything supported it (it doesn't).
-  // For now, let's use the credential URL for "Download/External" as a backup,
-  // or better: for download, we can trigger a blob download.
   const externalUrl = everythingService.getFileUrl(filePath);
 
   const handleDownload = () => {

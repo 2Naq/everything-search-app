@@ -5,10 +5,9 @@ import type {
   SearchResult,
 } from "@/types/everything.types";
 import { authService } from "./auth.service";
+import { settingsService } from "./settings.service";
 
 const API_BASE_URL = import.meta.env.VITE_APP_API_URL;
-const EVERYTHING_URL =
-  import.meta.env.VITE_EVERYTHING_URL || "http://localhost:8090";
 
 /**
  * Everything Search Service
@@ -24,13 +23,24 @@ class EverythingService {
   /**
    * Make authenticated fetch request
    */
-  private async fetchWithAuth(url: string): Promise<Response> {
+  private async fetchWithAuth(
+    url: string,
+    customServerUrl?: string,
+  ): Promise<Response> {
     // Client-side check to prevent native browser auth popup
     if (!authService.isAuthenticated()) {
       throw new AuthenticationError("Authentication required");
     }
 
     const headers = authService.getHeaders();
+
+    // Add dynamic server URL header
+    // Use provided custom URL (for testing connection) or saved setting
+    const targetUrl = customServerUrl || settingsService.getServerUrl();
+    if (targetUrl) {
+      headers["X-Everything-Server-Url"] = targetUrl;
+    }
+
     const response = await fetch(url, { headers });
 
     // If 401 Unauthorized, throw specific error
@@ -44,7 +54,11 @@ class EverythingService {
   /**
    * Test connection with credentials
    */
-  async testConnection(username?: string, password?: string): Promise<boolean> {
+  async testConnection(
+    username?: string,
+    password?: string,
+    serverUrl?: string,
+  ): Promise<boolean> {
     const headers: HeadersInit = {};
 
     if (username && password) {
@@ -55,6 +69,12 @@ class EverythingService {
       if (authHeader) {
         headers["Authorization"] = authHeader;
       }
+    }
+
+    // Add dynamic server URL header for test
+    const targetUrl = serverUrl || settingsService.getServerUrl();
+    if (targetUrl) {
+      headers["X-Everything-Server-Url"] = targetUrl;
     }
 
     try {
@@ -170,19 +190,19 @@ class EverythingService {
    */
   getFileUrl(filePath: string): string {
     const credentials = authService.getCredentials();
+    const serverUrl = settingsService.getServerUrl();
+
     if (credentials) {
       // Embed credentials in URL for media elements (img, video, audio, iframe)
       // Format: http://username:password@host:port/path
       try {
-        const url = new URL(
-          `${EVERYTHING_URL}/${encodeURIComponent(filePath)}`,
-        );
+        const url = new URL(`${serverUrl}/${encodeURIComponent(filePath)}`);
         url.username = credentials.username;
         url.password = credentials.password;
         return url.toString();
       } catch {
         // Fallback if URL parsing fails
-        return `${EVERYTHING_URL}/${encodeURIComponent(filePath)}`;
+        return `${serverUrl}/${encodeURIComponent(filePath)}`;
       }
     }
     // No auth - use proxy URL which is now relative (compatible with both)

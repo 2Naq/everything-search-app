@@ -7,7 +7,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
-        VITE_EVERYTHING_URL: "http://localhost:80",
+        VITE_EVERYTHING_URL: "http://192.168.1.2",
       },
     },
   ],

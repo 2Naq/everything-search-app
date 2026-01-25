@@ -22,8 +22,27 @@ const apiProxy = createProxyMiddleware({
     // Check for dynamic target header
     const dynamicTarget = req.headers["x-everything-server-url"];
     if (dynamicTarget) {
-      // console.log(`Dynamic proxy target: ${dynamicTarget}`);
-      return dynamicTarget;
+      try {
+        const url = new URL(dynamicTarget);
+        if (url.port && parseInt(url.port) > 65535) {
+          throw new Error("Invalid port");
+        }
+        // Validate IPv4 octets if hostname looks like an IP
+        const ipParts = url.hostname.split(".");
+        if (ipParts.length === 4 && ipParts.every((p) => /^\d+$/.test(p))) {
+          const isValidIP = ipParts.every((p) => parseInt(p) <= 255);
+          if (!isValidIP) {
+            throw new Error("Invalid IPv4 address");
+          }
+        }
+        // console.log(`Dynamic proxy target: ${dynamicTarget}`);
+        return dynamicTarget;
+      } catch (err) {
+        console.error("Invalid dynamic target:", err.message);
+        // Return a definitely unreachable target to force error,
+        // effectively disabling fallback to default target
+        return "http://0.0.0.0:0";
+      }
     }
     return EVERYTHING_URL;
   },
@@ -37,10 +56,24 @@ const apiProxy = createProxyMiddleware({
     proxyReq.removeHeader("x-everything-server-url");
   },
   onProxyRes: (proxyRes) => {
+    // console.log("Proxy response status:", proxyRes.statusCode);
+    // console.log("Proxy response headers:", proxyRes.headers);
+
     // Remove WWW-Authenticate header to prevent browser native auth popup
-    if (proxyRes.headers["www-authenticate"]) {
-      delete proxyRes.headers["www-authenticate"];
+    // Headers are typically lowercased by Node.js/Express, but we check safely
+    const authHeaderKey = Object.keys(proxyRes.headers).find(
+      (key) => key.toLowerCase() === "www-authenticate",
+    );
+
+    if (authHeaderKey) {
+      delete proxyRes.headers[authHeaderKey];
+      delete proxyRes.headers[authHeaderKey];
+      // console.log("Removed WWW-Authenticate header");
     }
+  },
+  onError: (err, req, res) => {
+    console.error("Proxy error:", err);
+    res.status(502).send("Proxy Error");
   },
 });
 

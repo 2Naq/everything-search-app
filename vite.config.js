@@ -3,11 +3,14 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import http from "http";
+import https from "https";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const everythingUrl = env.VITE_EVERYTHING_URL || "http://localhost:8090";
+  const defaultEverythingUrl =
+    env.VITE_EVERYTHING_URL || "http://localhost:8090";
 
   // Helper to validate IPv4 address
   const isValidIPv4 = (hostname) => {
@@ -19,110 +22,99 @@ export default defineConfig(({ mode }) => {
     });
   };
 
-  const proxyConfig = {
-    "/api": {
-      target: everythingUrl,
-      changeOrigin: true,
-      rewrite: (path) => path.replace(/^\/api/, ""),
-      router: (req) => {
-        // Check for dynamic target header
+  // Validate target URL
+  const validateTargetUrl = (urlString) => {
+    try {
+      const url = new URL(urlString);
+      if (url.port && parseInt(url.port) > 65535) {
+        return { valid: false, error: "Invalid port" };
+      }
+      if (!isValidIPv4(url.hostname)) {
+        return { valid: false, error: "Invalid IPv4 address" };
+      }
+      return { valid: true, url };
+    } catch (err) {
+      return { valid: false, error: err.message };
+    }
+  };
+
+  // Custom middleware plugin for dynamic proxy
+  const dynamicProxyPlugin = () => ({
+    name: "dynamic-proxy",
+    configureServer(server) {
+      server.middlewares.use("/api", (req, res, next) => {
+        // Get dynamic target from header
         const dynamicTarget = req.headers["x-everything-server-url"];
-        console.log(
-          "[Vite Proxy] Request received, X-Everything-Server-Url:",
-          dynamicTarget || "(not set)",
-        );
-        if (dynamicTarget) {
-          try {
-            const url = new URL(dynamicTarget);
-            // Validate port
-            if (url.port && parseInt(url.port) > 65535) {
-              throw new Error("Invalid port");
-            }
-            // Validate IPv4 octets if hostname looks like an IP
-            if (!isValidIPv4(url.hostname)) {
-              throw new Error("Invalid IPv4 address");
-            }
-            console.log(
-              "[Vite Proxy] Valid target, routing to:",
-              dynamicTarget,
-            );
-            return dynamicTarget;
-          } catch (err) {
-            console.error(
-              "[Vite Proxy] Invalid dynamic target:",
-              err.message,
-              "- Routing to 0.0.0.0:0",
-            );
-            return "http://0.0.0.0:0"; // Force connection error
-          }
+        const targetUrl = dynamicTarget || defaultEverythingUrl;
+
+        console.log("[Dynamic Proxy] Request to /api, target:", targetUrl);
+
+        // Validate target URL
+        const validation = validateTargetUrl(targetUrl);
+        if (!validation.valid) {
+          console.error("[Dynamic Proxy] Invalid target:", validation.error);
+          res.writeHead(502, { "Content-Type": "text/plain" });
+          res.end(`Proxy Error: ${validation.error}`);
+          return;
         }
-        console.log(
-          "[Vite Proxy] No custom header, using default:",
-          everythingUrl,
-        );
-        return everythingUrl;
-      },
-      configure: (proxy, _options) => {
-        proxy.on("proxyReq", (proxyReq, req, res) => {
-          if (req.headers.authorization) {
-            proxyReq.setHeader("Authorization", req.headers.authorization);
-          }
 
-          // Check for dynamic target header and validate BEFORE sending
-          const dynamicTarget = req.headers["x-everything-server-url"];
-          if (dynamicTarget) {
-            try {
-              const url = new URL(dynamicTarget);
-              // Validate port
-              if (url.port && parseInt(url.port) > 65535) {
-                throw new Error("Invalid port");
-              }
-              // Validate IPv4 octets if hostname looks like an IP
-              if (!isValidIPv4(url.hostname)) {
-                throw new Error("Invalid IPv4 address");
-              }
-              // URL is valid - log and continue
-              console.log("[Vite Proxy] Valid target:", dynamicTarget);
-            } catch (err) {
-              console.error(
-                "[Vite Proxy] Invalid target:",
-                dynamicTarget,
-                "-",
-                err.message,
-              );
-              // Abort the current proxy request
-              proxyReq.destroy();
-              // Respond with 502 error
-              if (!res.headersSent) {
-                res.writeHead(502, { "Content-Type": "text/plain" });
-                res.end("Proxy Error: Invalid target URL");
-              }
-              return;
-            }
-          }
+        const parsedTarget = validation.url;
+        const isHttps = parsedTarget.protocol === "https:";
+        const httpModule = isHttps ? https : http;
 
-          // Remove the custom header before sending upstream
-          proxyReq.removeHeader("x-everything-server-url");
+        // Build the target path (remove /api prefix)
+        const targetPath = req.url; // Already has /api removed by middleware path
+
+        const options = {
+          hostname: parsedTarget.hostname,
+          port: parsedTarget.port || (isHttps ? 443 : 80),
+          path: targetPath,
+          method: req.method,
+          headers: {
+            ...req.headers,
+            host: parsedTarget.host,
+          },
+          timeout: 30000, // 10 second timeout
+        };
+
+        // Remove our custom header
+        delete options.headers["x-everything-server-url"];
+
+        const proxyReq = httpModule.request(options, (proxyRes) => {
+          // Remove WWW-Authenticate header to prevent browser auth popup
+          const headers = { ...proxyRes.headers };
+          delete headers["www-authenticate"];
+
+          res.writeHead(proxyRes.statusCode || 500, headers);
+          proxyRes.pipe(res);
         });
-        proxy.on("proxyRes", (proxyRes, req, res) => {
-          // Remover WWW-Authenticate header to prevent browser native auth popup
-          if (proxyRes.headers["www-authenticate"]) {
-            delete proxyRes.headers["www-authenticate"];
-          }
-        });
-        proxy.on("error", (err, req, res) => {
-          console.error("[Vite Proxy] Error:", err.message);
+
+        proxyReq.on("error", (err) => {
+          console.error("[Dynamic Proxy] Error:", err.message);
           if (!res.headersSent) {
             res.writeHead(502, { "Content-Type": "text/plain" });
-            res.end("Proxy Error");
+            res.end("Proxy Error: " + err.message);
           }
         });
-      },
+
+        proxyReq.on("timeout", () => {
+          console.error("[Dynamic Proxy] Timeout");
+          proxyReq.destroy();
+          if (!res.headersSent) {
+            res.writeHead(504, { "Content-Type": "text/plain" });
+            res.end("Proxy Error: Connection timeout");
+          }
+        });
+
+        // Pipe request body
+        req.pipe(proxyReq);
+      });
     },
-  };
+  });
 
   return {
     plugins: [
+      dynamicProxyPlugin(), // Custom proxy must be FIRST
       tanstackRouter({
         target: "react",
         autoCodeSplitting: true,
@@ -139,13 +131,11 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       strictPort: true,
-      proxy: proxyConfig, // Use Shared Proxy Config
     },
     // Preview config (npm run preview)
     preview: {
       port: 5173,
       strictPort: true,
-      proxy: proxyConfig, // Enable Proxy for Preview too!
     },
   };
 });

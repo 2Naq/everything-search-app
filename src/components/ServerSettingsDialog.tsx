@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Server, Check, AlertTriangle, RotateCcw } from "lucide-react";
+import { Check, AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

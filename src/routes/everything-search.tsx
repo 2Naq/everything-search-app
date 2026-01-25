@@ -254,17 +254,27 @@ function EverythingSearchPage() {
 
   const totalPages = Math.ceil(totalResults / resultsPerPage);
   return (
-    <div>
-      <header className="bg-card sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between px-6  shadow transition-colors duration-300">
-        <Header />
-        <SearchBar onSearch={handleSearch} isLoading={isLoading} />
-        {/* Auth status bar */}
-        <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground min-w-64">
-          <ConnectionStatus />
+    <>
+      <header className="bg-card sticky top-0 z-10 flex h-14 md:h-16 shrink-0 items-center justify-between gap-2 px-3 md:px-6 shadow transition-colors duration-300">
+        {/* Logo - hidden on mobile */}
+        <div className="hidden md:block shrink-0">
+          <Header />
+        </div>
+        {/* Search bar - takes remaining space */}
+        <div className="flex-1 ">
+          <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+        </div>
+        {/* Auth status bar - compact on mobile */}
+        <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground shrink-0">
+          <ConnectionStatus className="pl-2.5" />
           {isAuthenticated && (
             <>
-              <User className="h-4 w-4" />
-              <span>{authService.getCredentials()?.username || "no user"}</span>
+              <div className="hidden lg:flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span className="max-w-24 truncate">
+                  {authService.getCredentials()?.username || "no user"}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -272,7 +282,7 @@ function EverythingSearchPage() {
                 className="h-7 gap-1 text-xs"
               >
                 <LogOut className="h-3 w-3" />
-                Logout
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </>
           )}
@@ -324,6 +334,6 @@ function EverythingSearchPage() {
           error={null}
         />
       </main>
-    </div>
+    </>
   );
 }

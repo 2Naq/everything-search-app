@@ -32,7 +32,9 @@ class EverythingService {
       throw new AuthenticationError("Authentication required");
     }
 
-    const headers = authService.getHeaders();
+    const headers: Record<string, string> = {
+      ...(authService.getHeaders() as Record<string, string>),
+    };
 
     // Add dynamic server URL header
     // Use provided custom URL (for testing connection) or saved setting
@@ -59,7 +61,7 @@ class EverythingService {
     password?: string,
     serverUrl?: string,
   ): Promise<boolean> {
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
 
     if (username && password) {
       const encoded = btoa(`${username}:${password}`);
@@ -89,7 +91,8 @@ class EverythingService {
         headers,
       });
       return response.ok;
-    } catch {
+    } catch (e) {
+      console.error("Connection exception:", e);
       return false;
     }
   }

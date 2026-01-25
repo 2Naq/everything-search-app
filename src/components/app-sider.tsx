@@ -11,12 +11,13 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Link } from "@tanstack/react-router";
-import { Search, Component, Home } from "lucide-react";
+import { Search, Component, Home, LayoutDashboard } from "lucide-react";
 import { SiderUser } from "./nav-user";
 import AppLogo from "./app-logo";
 
 const mainMenuItems = [
   { title: "Home", icon: Home, to: "/" as const },
+  { title: "Dashboard", icon: LayoutDashboard, to: "/dashboard" as const },
   { title: "Tìm kiếm", icon: Search, to: "/everything-search" as const },
 ];
 

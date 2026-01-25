@@ -52,14 +52,14 @@ function SearchBar({ onSearch, isLoading }: SearchBarProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative max-w-2xl">
-      <div className="relative flex items-center">
+    <form onSubmit={handleSubmit} className="relative w-full`">
+      <div className="relative flex items-center w-full">
         <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
         <Input
           ref={inputRef}
           type="text"
-          className="h-12 w-full min-w-xl rounded-lg border-input bg-card pl-12 pr-24 text-base "
-          placeholder="Search files, folders, and documents..."
+          className="h-10 md:h-12 w-full rounded-lg border-input bg-card pl-10 md:pl-12 pr-12 md:pr-24 text-sm md:text-base"
+          placeholder="Tìm kiếm file, tài liệu..."
           value={query}
           onChange={handleChange}
         />
@@ -67,8 +67,10 @@ function SearchBar({ onSearch, isLoading }: SearchBarProps) {
           {isLoading && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin text-muted-foreground" />
           )}
-          <Kbd>CTRL</Kbd>
-          <Kbd>K</Kbd>
+          <div className="hidden md:block">
+            <Kbd>CTRL</Kbd>
+            <Kbd>K</Kbd>
+          </div>
         </div>
       </div>
     </form>

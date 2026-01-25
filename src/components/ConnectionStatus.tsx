@@ -26,6 +26,8 @@ function ConnectionStatus({ className }: ConnectionStatusProps) {
   };
 
   useEffect(() => {
+    // Reset status to "Connecting..." immediately when URL changes
+    setIsConnected(null);
     updateStatus();
 
     const checkConnection = async () => {
@@ -40,15 +42,61 @@ function ConnectionStatus({ className }: ConnectionStatusProps) {
           headers["X-Everything-Server-Url"] = currentUrl;
         }
 
-        // Ping the API with a minimal request
-        const response = await fetch("/api/?search=&j=1&c=1", {
+        // Use AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        // Ping the API with a minimal request, add timestamp to prevent caching
+        const response = await fetch(`/api/?search=&j=1&c=1&_t=${Date.now()}`, {
           method: "GET",
           headers,
+          cache: "no-store",
+          signal: controller.signal,
         });
 
-        // Consider connected if we get any response (even 401)
-        setIsConnected(response.ok || response.status === 401);
+        clearTimeout(timeoutId);
+
+        // Consider disconnected if 5xx (proxy error)
+        if (response.status >= 500) {
+          setIsConnected(false);
+          return;
+        }
+
+        // For 2xx responses, verify it's actually Everything by checking JSON structure
+        if (response.ok) {
+          try {
+            const data = await response.json();
+            // Everything HTTP Server returns {totalResults, results: [...]}
+            if (
+              typeof data.totalResults === "number" &&
+              Array.isArray(data.results)
+            ) {
+              setIsConnected(true);
+              return;
+            }
+            // Response is not from Everything
+            console.warn(
+              "[ConnectionStatus] Response is not from Everything:",
+              data,
+            );
+            setIsConnected(false);
+          } catch {
+            // JSON parse error - not Everything
+            setIsConnected(false);
+          }
+          return;
+        }
+
+        // 401 means auth required but server is reachable
+        if (response.status === 401) {
+          setIsConnected(true);
+          return;
+        }
+
+        // Other status codes - disconnected
+        setIsConnected(false);
       } catch {
+        // Network error, timeout, or aborted request
         setIsConnected(false);
       }
     };
@@ -99,7 +147,6 @@ function ConnectionStatus({ className }: ConnectionStatusProps) {
             <span className="hidden sm:inline">Disconnected</span>
           </>
         )}
-        <Settings className="h-3 w-3 ml-1 opacity-50" />
       </div>
 
       <ServerSettingsDialog

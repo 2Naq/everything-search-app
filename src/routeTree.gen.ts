@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as EverythingSearchRouteImport } from './routes/everything-search'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings/appearance'
@@ -17,6 +19,16 @@ import { Route as SettingsAppearanceRouteImport } from './routes/settings/appear
 const EverythingSearchRoute = EverythingSearchRouteImport.update({
   id: '/everything-search',
   path: '/everything-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsRoute = ComponentsRouteImport.update({
+  id: '/components',
+  path: '/components',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRouteRoute = SettingsRouteRouteImport.update({
@@ -38,12 +50,16 @@ const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteRouteWithChildren
+  '/components': typeof ComponentsRoute
+  '/dashboard': typeof DashboardRoute
   '/everything-search': typeof EverythingSearchRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteRouteWithChildren
+  '/components': typeof ComponentsRoute
+  '/dashboard': typeof DashboardRoute
   '/everything-search': typeof EverythingSearchRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
 }
@@ -51,18 +67,34 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteRouteWithChildren
+  '/components': typeof ComponentsRoute
+  '/dashboard': typeof DashboardRoute
   '/everything-search': typeof EverythingSearchRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/everything-search' | '/settings/appearance'
+  fullPaths:
+    | '/'
+    | '/settings'
+    | '/components'
+    | '/dashboard'
+    | '/everything-search'
+    | '/settings/appearance'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/everything-search' | '/settings/appearance'
+  to:
+    | '/'
+    | '/settings'
+    | '/components'
+    | '/dashboard'
+    | '/everything-search'
+    | '/settings/appearance'
   id:
     | '__root__'
     | '/'
     | '/settings'
+    | '/components'
+    | '/dashboard'
     | '/everything-search'
     | '/settings/appearance'
   fileRoutesById: FileRoutesById
@@ -70,6 +102,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
+  ComponentsRoute: typeof ComponentsRoute
+  DashboardRoute: typeof DashboardRoute
   EverythingSearchRoute: typeof EverythingSearchRoute
 }
 
@@ -80,6 +114,20 @@ declare module '@tanstack/react-router' {
       path: '/everything-search'
       fullPath: '/everything-search'
       preLoaderRoute: typeof EverythingSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components': {
+      id: '/components'
+      path: '/components'
+      fullPath: '/components'
+      preLoaderRoute: typeof ComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -121,6 +169,8 @@ const SettingsRouteRouteWithChildren = SettingsRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRouteRoute: SettingsRouteRouteWithChildren,
+  ComponentsRoute: ComponentsRoute,
+  DashboardRoute: DashboardRoute,
   EverythingSearchRoute: EverythingSearchRoute,
 }
 export const routeTree = rootRouteImport

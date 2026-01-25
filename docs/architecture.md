@@ -6,6 +6,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                        Browser                               │
 │                   http://localhost:3001                      │
+│            (Stores basic auth & Server URL)                  │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
@@ -14,16 +15,17 @@
 │                      (server.cjs)                            │
 │  ┌─────────────────┐  ┌──────────────────────────────────┐  │
 │  │  Static Files   │  │         API Proxy                │  │
-│  │    (dist/)      │  │  /api/* → localhost:80           │  │
-│  │                 │  │  + Strip WWW-Authenticate        │  │
-│  │                 │  │  + Forward Authorization         │  │
+│  │    (dist/)      │  │  Checks: X-Everything-Server-Url │  │
+│  │                 │  │  fallback: ENV.EVERYTHING_URL    │  │
+│  │                 │  │                                  │  │
+│  │                 │  │  Target: Dynamic IP / localhost  │  │
 │  └─────────────────┘  └──────────────────────────────────┘  │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                Everything HTTP Server                        │
-│                   http://localhost:80                        │
+│             (Remote IP: 192.168.x.x OR Local)                │
 │              (File indexing & search engine)                 │
 └─────────────────────────────────────────────────────────────┘
 ```

@@ -53,6 +53,33 @@ function getPreviewType(extension: string): PreviewType {
   return "unsupported";
 }
 
+function getMimeType(extension: string): string {
+  const map: Record<string, string> = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    bmp: "image/bmp",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    ogg: "video/ogg",
+    mov: "video/quicktime",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    aac: "audio/aac",
+    flac: "audio/flac",
+    txt: "text/plain",
+    md: "text/markdown",
+    json: "application/json",
+    xml: "application/xml",
+    csv: "text/csv",
+  };
+  return map[extension.toLowerCase()] || "application/octet-stream";
+}
+
 function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   const [zoom, setZoom] = useState(1);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -103,7 +130,10 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         }
 
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+        const extension = getFileExtension(file.name);
+        const mimeType = getMimeType(extension);
+        const newBlob = new Blob([blob], { type: mimeType });
+        const url = URL.createObjectURL(newBlob);
         setObjectUrl(url);
       } catch (err) {
         console.error("Preview loading error:", err);
@@ -145,7 +175,13 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   };
 
   const handleOpenExternal = () => {
-    window.open(externalUrl, "_blank");
+    // Use objectUrl (blob with correct MIME type) so browser can view the file
+    // instead of downloading it
+    if (objectUrl) {
+      window.open(objectUrl, "_blank");
+    } else {
+      window.open(externalUrl, "_blank");
+    }
   };
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.25, 3));
@@ -289,7 +325,7 @@ function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="flex h-[85vh] max-w-7xl flex-col gap-0 p-0"
+        className="flex h-[85vh] min-w-[90vw] flex-col gap-0 p-0"
         showCloseButton={false}
       >
         <DialogHeader className="flex flex-row items-center justify-between border-b px-4 py-3">

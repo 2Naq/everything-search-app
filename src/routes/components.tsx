@@ -24,7 +24,7 @@ import LoginDialog from "@/components/LoginDialog";
 import ServerSettingsDialog from "@/components/ServerSettingsDialog";
 import { Separator } from "@/components/ui/separator";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/components")({
   component: ComponentShowcase,
 });
 

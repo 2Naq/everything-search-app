@@ -85,9 +85,21 @@ pm2 restart everything-search-app --update-env
 
 ## Connecting to Remote Everything Server
 
-Nếu Everything HTTP Server chạy trên máy khác (ví dụ: `192.168.1.191`), thay đổi cấu hình như sau:
+### Option 1: Dynamic Configuration (Recommended)
 
-### 1. Sửa `ecosystem.config.cjs`
+Từ phiên bản mới (v1.1+), bạn có thể đổi IP Server ngay trên giao diện web mà không cần sửa config hay restart service:
+
+1. Click vào biểu tượng kết nối (Wifi icon) trên header.
+2. Nhập IP Server (vd: `http://192.168.1.191:80`).
+3. Bấm **Test Connection** -> **Save**.
+
+Hệ thống sẽ lưu cấu hình này trên trình duyệt của bạn.
+
+### Option 2: Default Environment (Hardcoded)
+
+Nếu muốn thay đổi giá trị mặc định cho tất cả user (khi chưa cấu hình option 1):
+
+1. Sửa `ecosystem.config.cjs`:
 
 ```javascript
 module.exports = {
@@ -99,7 +111,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
-        VITE_EVERYTHING_URL: "http://192.168.1.191:80", // ← Remote IP
+        VITE_EVERYTHING_URL: "http://192.168.1.191:80", // Default Fallback
       },
     },
   ],

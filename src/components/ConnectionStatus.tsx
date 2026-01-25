@@ -6,156 +6,160 @@ import { authService } from "@/services/auth.service";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 
 interface ConnectionStatusProps {
-  className?: string;
+    className?: string;
 }
 
 function ConnectionStatus({ className }: ConnectionStatusProps) {
-  const [isConnected, setIsConnected] = useState<boolean | null>(null);
-  const [displayUrl, setDisplayUrl] = useState<string>("");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [serverUrl, setServerUrl] = useState(settingsService.getServerUrl());
+    const [isConnected, setIsConnected] = useState<boolean | null>(null);
+    const [displayUrl, setDisplayUrl] = useState<string>("");
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [serverUrl, setServerUrl] = useState(settingsService.getServerUrl());
 
-  const updateStatus = () => {
-    // Get current URL from settings
-    const currentUrl = settingsService.getServerUrl();
-    setServerUrl(currentUrl);
-
-    // For display
-    const cleanUrl = currentUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    setDisplayUrl(cleanUrl);
-  };
-
-  useEffect(() => {
-    // Reset status to "Connecting..." immediately when URL changes
-    setIsConnected(null);
-    updateStatus();
-
-    const checkConnection = async () => {
-      try {
+    const updateStatus = () => {
+        // Get current URL from settings
         const currentUrl = settingsService.getServerUrl();
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          ...(authService.getHeaders() as Record<string, string>),
-        };
+        setServerUrl(currentUrl);
 
-        if (currentUrl) {
-          headers["X-Everything-Server-Url"] = currentUrl;
-        }
-
-        // Use AbortController for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        // Ping the API with a minimal request, add timestamp to prevent caching
-        const response = await fetch(`/api/?search=&j=1&c=1&_t=${Date.now()}`, {
-          method: "GET",
-          headers,
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // Consider disconnected if 5xx (proxy error)
-        if (response.status >= 500) {
-          setIsConnected(false);
-          return;
-        }
-
-        // For 2xx responses, verify it's actually Everything by checking JSON structure
-        if (response.ok) {
-          try {
-            const data = await response.json();
-            // Everything HTTP Server returns {totalResults, results: [...]}
-            if (
-              typeof data.totalResults === "number" &&
-              Array.isArray(data.results)
-            ) {
-              setIsConnected(true);
-              return;
-            }
-            // Response is not from Everything
-            console.warn(
-              "[ConnectionStatus] Response is not from Everything:",
-              data,
-            );
-            setIsConnected(false);
-          } catch {
-            // JSON parse error - not Everything
-            setIsConnected(false);
-          }
-          return;
-        }
-
-        // 401 means auth required but server is reachable
-        if (response.status === 401) {
-          setIsConnected(true);
-          return;
-        }
-
-        // Other status codes - disconnected
-        setIsConnected(false);
-      } catch {
-        // Network error, timeout, or aborted request
-        setIsConnected(false);
-      }
+        // For display
+        const cleanUrl = currentUrl
+            .replace(/^https?:\/\//, "")
+            .replace(/\/$/, "");
+        setDisplayUrl(cleanUrl);
     };
 
-    // Check immediately
-    checkConnection();
+    useEffect(() => {
+        // Reset status to "Connecting..." immediately when URL changes
+        setIsConnected(null);
+        updateStatus();
 
-    // Check every 30 seconds
-    const interval = setInterval(checkConnection, 30000);
+        const checkConnection = async () => {
+            try {
+                const currentUrl = settingsService.getServerUrl();
+                const headers: Record<string, string> = {
+                    "Content-Type": "application/json",
+                    ...(authService.getHeaders() as Record<string, string>)
+                };
 
-    return () => clearInterval(interval);
-  }, [serverUrl]); // Re-run when serverUrl changes
+                if (currentUrl) {
+                    headers["X-Everything-Server-Url"] = currentUrl;
+                }
 
-  const handleSaved = () => {
-    updateStatus();
-    // Trigger re-check implicitly by updating serverUrl state above via updateStatus -> but state update is async/effect dependent
-    // actually updateStatus updates 'serverUrl' state which triggers effect.
-  };
+                // Use AbortController for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-  return (
-    <>
-      <div
-        onClick={() => setIsSettingsOpen(true)}
-        className={cn(
-          "flex items-center gap-2 text-sm cursor-pointer hover:opacity-80 transition-opacity",
-          isConnected === null
-            ? "text-yellow-600 dark:text-yellow-500"
-            : isConnected
-              ? "text-green-600 dark:text-green-400"
-              : "text-red-600 dark:text-red-400",
-          className,
-        )}
-        title="Click to configure server"
-      >
-        {isConnected === null ? (
-          <>
-            <div className="h-2 w-2 animate-pulse rounded-full bg-current" />
-            <span>Connecting...</span>
-          </>
-        ) : isConnected ? (
-          <>
-            <Wifi className="h-4 w-4" />
-            <span className="hidden sm:inline">{displayUrl}</span>
-          </>
-        ) : (
-          <>
-            <WifiOff className="h-4 w-4" />
-            <span className="hidden sm:inline">Disconnected</span>
-          </>
-        )}
-      </div>
+                // Ping the API with a minimal request, add timestamp to prevent caching
+                const response = await fetch(
+                    `/api/?search=&j=1&c=1&_t=${Date.now()}`,
+                    {
+                        method: "GET",
+                        headers,
+                        cache: "no-store",
+                        signal: controller.signal
+                    }
+                );
 
-      <ServerSettingsDialog
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSaved={handleSaved}
-      />
-    </>
-  );
+                clearTimeout(timeoutId);
+
+                // Consider disconnected if 5xx (proxy error)
+                if (response.status >= 500) {
+                    setIsConnected(false);
+                    return;
+                }
+
+                // For 2xx responses, verify it's actually Everything by checking JSON structure
+                if (response.ok) {
+                    try {
+                        const data = await response.json();
+                        // Everything HTTP Server returns {totalResults, results: [...]}
+                        if (
+                            typeof data.totalResults === "number" &&
+                            Array.isArray(data.results)
+                        ) {
+                            setIsConnected(true);
+                            return;
+                        }
+                        // Response is not from Everything
+                        console.warn(
+                            "[ConnectionStatus] Response is not from Everything:",
+                            data
+                        );
+                        setIsConnected(false);
+                    } catch {
+                        // JSON parse error - not Everything
+                        setIsConnected(false);
+                    }
+                    return;
+                }
+
+                // 401 means auth required but server is reachable
+                if (response.status === 401) {
+                    setIsConnected(true);
+                    return;
+                }
+
+                // Other status codes - disconnected
+                setIsConnected(false);
+            } catch {
+                // Network error, timeout, or aborted request
+                setIsConnected(false);
+            }
+        };
+
+        // Check immediately
+        checkConnection();
+
+        // Check every 30 seconds
+        const interval = setInterval(checkConnection, 30000);
+
+        return () => clearInterval(interval);
+    }, [serverUrl]); // Re-run when serverUrl changes
+
+    const handleSaved = () => {
+        updateStatus();
+        // Trigger re-check implicitly by updating serverUrl state above via updateStatus -> but state update is async/effect dependent
+        // actually updateStatus updates 'serverUrl' state which triggers effect.
+    };
+
+    return (
+        <>
+            <div
+                onClick={() => setIsSettingsOpen(true)}
+                className={cn(
+                    "flex cursor-pointer items-center gap-2 text-sm transition-opacity hover:opacity-80",
+                    isConnected === null
+                        ? "text-yellow-600 dark:text-yellow-500"
+                        : isConnected
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400",
+                    className
+                )}
+                title="Click to configure server">
+                {isConnected === null ? (
+                    <>
+                        <div className="h-2 w-2 animate-pulse rounded-full bg-current" />
+                        <span>Connecting...</span>
+                    </>
+                ) : isConnected ? (
+                    <>
+                        <Wifi className="h-4 w-4" />
+                        <span className="hidden sm:inline">{displayUrl}</span>
+                    </>
+                ) : (
+                    <>
+                        <WifiOff className="h-4 w-4" />
+                        <span className="hidden sm:inline">Disconnected</span>
+                    </>
+                )}
+            </div>
+
+            <ServerSettingsDialog
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                onSaved={handleSaved}
+            />
+        </>
+    );
 }
 
 export default ConnectionStatus;

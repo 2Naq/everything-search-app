@@ -84,17 +84,17 @@
 // export default AuthContext;
 
 export function useAuth() {
-  return {
-    user: {
-      fullName: "Admin",
-      username: "Hello money",
-      email: "admin@everything.com",
-      userGroupName: "Admin",
-      avatarUrl:
-        "https://lh3.googleusercontent.com/a/ACg8ocK_NAPuqjKSxmFgv5M3KqbY96TQalMFpF1QKz0c9tC-Xv7zzSin=s288-c-no",
-    },
-    logout: async () => {
-      console.log("logout");
-    },
-  };
+    return {
+        user: {
+            fullName: "Admin",
+            username: "Hello money",
+            email: "admin@everything.com",
+            userGroupName: "Admin",
+            avatarUrl:
+                "https://lh3.googleusercontent.com/a/ACg8ocK_NAPuqjKSxmFgv5M3KqbY96TQalMFpF1QKz0c9tC-Xv7zzSin=s288-c-no"
+        },
+        logout: async () => {
+            console.log("logout");
+        }
+    };
 }

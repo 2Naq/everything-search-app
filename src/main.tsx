@@ -17,30 +17,32 @@ const router = createRouter({ routeTree });
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+    interface Register {
+        router: typeof router;
+    }
 }
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      retry: 1,
-    },
-  },
+    defaultOptions: {
+        queries: {
+            staleTime: 5 * 60 * 1000,
+            retry: 1
+        }
+    }
 });
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <Toaster />
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <ColorThemeProvider>
-          <RouterProvider router={router} />
-        </ColorThemeProvider>
-      </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </StrictMode>,
+    <StrictMode>
+        <QueryClientProvider client={queryClient}>
+            <Toaster />
+            <ThemeProvider
+                defaultTheme="dark"
+                storageKey="vite-ui-theme">
+                <ColorThemeProvider>
+                    <RouterProvider router={router} />
+                </ColorThemeProvider>
+            </ThemeProvider>
+            <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+    </StrictMode>
 );

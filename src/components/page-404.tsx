@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/react-router';
-import { Button } from './ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { Link } from "@tanstack/react-router";
+import { Button } from "./ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export default function Page404() {
     return (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Wifi, WifiOff, Settings } from "lucide-react";
+import { Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { settingsService } from "@/services/settings.service";
 import { authService } from "@/services/auth.service";
